@@ -7,7 +7,7 @@ import pytest
 
 from users.core.domain.permission import Permission, PermissionId
 from users.core.domain.role import Role, RoleId
-from users.core.domain.user import User, UserId
+from users.core.domain.user import User, UserId, UserQuery
 from users.core.services.user_services import UserRepository, UserServices
 
 
@@ -48,8 +48,11 @@ def sample_permission() -> Permission:
 async def test_create_user(
     user_service: UserServices, user_repository_mock: AsyncMock, sample_user: User
 ):
+    user_repository_mock.find_by_email.return_value = None
     user_repository_mock.save.return_value = None
-    result = await user_service.create_user(sample_user)
+    user_input = MagicMock()
+    user_input.to_user.return_value = sample_user
+    result = await user_service.create_user(user_input)
     user_repository_mock.save.assert_called_once_with(sample_user)
     assert result == sample_user
 
@@ -320,3 +323,38 @@ async def test_get_user_roles(
     # Assert
     assert result == roles
     user_repository_mock.get_user_roles.assert_awaited_once_with(user_id)
+
+
+@pytest.mark.asyncio
+async def test_query_users(
+    user_service: UserServices, user_repository_mock: AsyncMock
+) -> None:
+    """Test query_users returns the correct list of users."""
+    # Arrange
+    query = UserQuery(page=1, page_size=10)
+    users: Sequence[User] = [
+        User(
+            id=UserId(value=str(uuid.uuid4())),
+            email="",
+            password="",
+            first_name="",
+            last_name="",
+            created_at=datetime.now(UTC),
+            roles=[],
+            prohibited_permissions=[],
+        )
+    ]
+    total = 1
+
+    user_repository_mock.query_users.return_value = (users, total)
+
+    # Act
+    result = await user_service.query_users(query)
+
+    # Assert
+    assert result.users == users
+    assert result.total == total
+    assert result.page == query.page
+    assert result.page_size == query.page_size
+    assert result.total_pages == 1
+    user_repository_mock.query_users.assert_awaited_once_with(query)

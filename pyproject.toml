@@ -34,7 +34,7 @@ test = { cmd = "pytest --cov-config=tox.ini --cov=src --cov-report term-missing 
 
 [dependency-groups]
 dev = [
-    "pdm>=2.22.0",
+    "pdm>=2.22.3",
     "types-python-jose>=3.3.4.20240106",
     "pytest>=8.3.4",
     "pytest-cov>=6.0.0",

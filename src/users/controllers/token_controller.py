@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Security
 from jose import JWTError
 from pydantic import BaseModel
 
 from ..core.domain.user import User
+from ..core.services.access import Actor, UserScope
 from ..core.services.token_services import TokenPairInput, TokenServices
+from ..middlewares.access_scopes import has_any_scope
 from .base import BaseController, controller
 
 
@@ -83,7 +85,9 @@ class TokenController(BaseController):
         """Generate a new access token from a refresh token."""
         try:
             token = await self.service.get_refresh_token(refresh_token)
+            user = await self.service.get_user_from_refresh_token(refresh_token)
             access_token = self.service.create_access_token(
+                user=user,
                 refresh_token=token,
                 valid_from=datetime.now(),
             )
@@ -95,7 +99,14 @@ class TokenController(BaseController):
                 status_code=400, detail=f"Error refreshing access token: {str(e)}"
             )
 
-    async def revoke_refresh_token(self, refresh_token: str) -> None:
+    async def revoke_refresh_token(
+        self,
+        refresh_token: str,
+        _: Actor = Security(
+            has_any_scope,
+            scopes=[UserScope.USER_WRITE.value],
+        ),
+    ) -> None:
         """Revoke a refresh token."""
         try:
             # Revoke the refresh token by removing it from the repository or marking it as invalid

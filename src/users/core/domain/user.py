@@ -60,3 +60,19 @@ class User(BaseModel):
         """Remove the prohibition of a permission from the user."""
         if permission.scope_name in self.prohibited_permissions:
             self.prohibited_permissions.remove(permission.scope_name)
+
+
+class UserQuery(BaseModel):
+    page: int = 1
+    page_size: int = 10
+    email_like: str | None = None
+    name_like: str | None = None
+    user_ids: list[str] = Field(default_factory=list)
+    role_ids: list[str] = Field(default_factory=list)
+    permission_ids: list[str] = Field(default_factory=list)
+    prohibited_permission_ids: list[str] = Field(default_factory=list)
+    sort_by: str = "created_at"
+    sort_desc: bool = True
+    include_roles: bool = False
+    include_permissions: bool = False
+    include_prohibited_permissions: bool = False

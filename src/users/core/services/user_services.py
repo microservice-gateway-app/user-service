@@ -1,13 +1,12 @@
 from datetime import UTC, datetime
 from typing import Sequence
 
+from bcrypt import checkpw, gensalt, hashpw
 from pydantic import BaseModel
-from bcrypt import hashpw, gensalt, checkpw
-
 
 from ..domain.permission import Permission, PermissionId
 from ..domain.role import Role, RoleId
-from ..domain.user import User, UserId
+from ..domain.user import User, UserId, UserQuery
 from .user_repository import UserRepository
 
 
@@ -43,16 +42,31 @@ class UserInput(BaseModel):
         )
 
 
+class UserList(BaseModel):
+    users: list[User]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
 class UserServices:
     """Perform CRUD operations on User, Roles & Permissions"""
 
     def __init__(self, repository: UserRepository) -> None:
         self.repository = repository
 
-    async def create_user(self, user: User) -> User:
+    async def create_user(self, user_input: UserInput) -> User:
         """Create a new user."""
-        await self.repository.save(user)
-        return user
+        to_save = user_input.to_user()
+        existing_user = await self.repository.find_by_email(to_save.email)
+        if existing_user:
+            raise ValueError(f"User with email {to_save.email} already exists.")
+        """Assign a default role to the user"""
+        default_role = await self.repository.find_role_by_name("user")
+        to_save.add_role(default_role)
+        await self.repository.save(to_save)
+        return to_save
 
     async def get_user_by_id(self, user_id: UserId) -> User:
         """Retrieve a user by their ID."""
@@ -60,6 +74,17 @@ class UserServices:
         if not user:
             raise ValueError(f"User with ID {user_id.value} not found.")
         return user
+
+    async def query_users(self, query: UserQuery) -> UserList:
+        """Query users against the database by query"""
+        users, total = await self.repository.query_users(query)
+        return UserList(
+            users=list(users),
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+            total_pages=(total // query.page_size) + 1,
+        )
 
     async def update_user(self, user: User) -> User:
         """Update an existing user."""

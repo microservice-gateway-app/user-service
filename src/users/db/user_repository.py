@@ -3,13 +3,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Sequence
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import DateTime, ForeignKey, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 from sqlalchemy.sql import select
 
 from users.core.domain.token import RefreshTokenId
+from users.core.domain.user import UserQuery
 from users.db.token_repository import RefreshTokenRecord
 
 from ..core.domain.permission import Permission, PermissionId
@@ -28,7 +29,9 @@ class UserModel(Base):
     first_name: Mapped[str] = mapped_column(nullable=False)
     middle_name: Mapped[str | None] = mapped_column(nullable=True)
     last_name: Mapped[str] = mapped_column(nullable=False)
-    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
     # Define the relationship with roles
     roles: Mapped[list[RoleModel]] = relationship(
@@ -60,11 +63,18 @@ class RoleModel(Base):
 
     id: Mapped[str] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(nullable=False)
+    permissions: Mapped[list[PermissionModel]] = relationship(
+        "PermissionModel", secondary="role_permissions", lazy="joined"
+    )
 
     # Conversion to Role domain model
     def to_role(self) -> Role:
         """Convert this ORM RoleModel to the domain Role class."""
-        return Role(id=RoleId(value=self.id), name=self.name)
+        return Role(
+            id=RoleId(value=self.id),
+            name=self.name,
+            permissions=[permission.to_permission() for permission in self.permissions],
+        )
 
 
 # Permission ORM Model
@@ -76,7 +86,9 @@ class PermissionModel(Base):
     description: Mapped[str] = mapped_column(nullable=True)
 
     # Relationship to roles
-    roles = relationship("RoleModel", secondary="role_permissions", lazy="selectin")
+    roles = relationship(
+        "RoleModel", secondary="role_permissions", lazy="selectin", viewonly=True
+    )
 
     def to_permission(self) -> Permission:
         return Permission(
@@ -121,7 +133,11 @@ class UserRepositoryOnSQLA(UserRepository):
         self, refresh_token_id: RefreshTokenId
     ) -> User | None:
         """Find a user by their refresh token."""
-        stmt = select(UserModel).filter(RefreshTokenRecord.id == refresh_token_id.value)
+        stmt = (
+            select(UserModel)
+            .join(RefreshTokenRecord)
+            .filter(RefreshTokenRecord.id == refresh_token_id.value)
+        )
         result = await self.session.execute(stmt)
         user_model = result.scalars().first()
         if user_model:
@@ -141,6 +157,33 @@ class UserRepositoryOnSQLA(UserRepository):
             return user_model.to_user()
         return None
 
+    async def query_users(self, query: UserQuery) -> tuple[Sequence[User], int]:
+        """Query users against the database by query."""
+        total_result = await self.session.execute(
+            select(func.count()).select_from(UserModel)
+        )
+        total = total_result.scalar() or 0
+        if not total or total < query.page_size * (query.page - 1):
+            return [], total
+
+        stmt = select(UserModel)
+        if query.email_like:
+            stmt = stmt.filter(UserModel.email.ilike(query.email_like))
+        if query.name_like:
+            stmt = stmt.filter(
+                or_(
+                    UserModel.first_name.like(query.name_like),
+                    UserModel.last_name.like(query.name_like),
+                )
+            )
+        if query.page and query.page_size:
+            stmt = stmt.limit(query.page_size).offset(
+                (query.page - 1) * query.page_size
+            )
+        result = await self.session.execute(stmt)
+        users = result.scalars().all()
+        return [user.to_user() for user in users], total
+
     async def find_by_email(self, email: str) -> User | None:
         """Find a user by email + password."""
         stmt = select(UserModel).filter_by(email=email)
@@ -156,6 +199,7 @@ class UserRepositoryOnSQLA(UserRepository):
             user_model = UserModel(
                 id=user.id.value,
                 email=user.email,
+                password=user.password,
                 first_name=user.first_name,
                 middle_name=user.middle_name,
                 last_name=user.last_name,
@@ -277,6 +321,15 @@ class UserRepositoryOnSQLA(UserRepository):
         if role_model:
             return role_model.to_role()
         raise ValueError(f"Role with ID {role_id.value} not found.")
+
+    async def find_role_by_name(self, name: str) -> Role:
+        """Find a role by its name."""
+        stmt = select(RoleModel).filter(RoleModel.name == name)
+        result = await self.session.execute(stmt)
+        role_model = result.scalars().first()
+        if role_model:
+            return role_model.to_role()
+        raise ValueError(f"Role with name {name} not found.")
 
     async def find_permission_by_id(self, permission_id: PermissionId) -> Permission:
         """Find a permission by its ID."""

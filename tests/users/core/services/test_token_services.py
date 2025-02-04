@@ -75,12 +75,19 @@ async def test_create_access_token(
     refresh_token = RefreshToken(
         token="some_refresh_token",
         expiration=datetime.now(UTC) + timedelta(days=7),
-        user_id="12345",
+        user_id=str(uuid.uuid4()),
     )
     valid_from = datetime.now(UTC)
 
     # Call the method to test
-    access_token = token_service.create_access_token(refresh_token, valid_from)
+    user = MagicMock(
+        id=UserId(value=refresh_token.user_id),
+        roles=[],
+        prohibited_permissions=[],
+    )
+    access_token = token_service.create_access_token(
+        refresh_token=refresh_token, valid_from=valid_from, user=user
+    )
 
     # Verify that the access token is created correctly
     assert access_token.token is not None
@@ -287,7 +294,9 @@ async def test_create_token_pair_invalid_password(
     mock_user = MagicMock(id=UserId(), password=hash_password("correct_password"))
     mock_user_repository.find_by_email.return_value = mock_user
 
-    token_pair_input = TokenPairInput(email="test@example.com", password="wrong_password")
+    token_pair_input = TokenPairInput(
+        email="test@example.com", password="wrong_password"
+    )
 
     with pytest.raises(ValueError, match="Incorrect username or password."):
         await token_service.create_token_pair(token_pair_input)

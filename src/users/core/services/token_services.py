@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from jose import JWTError, jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from users.core.services.user_services import check_password
 
@@ -15,8 +15,8 @@ from .user_repository import UserRepository
 
 
 class TokenPairInput(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., description="User email", examples=["admin@app.com"])
+    password: str = Field(..., description="User password", examples=["admin@123"])
 
 
 class TokenServices:
@@ -43,7 +43,7 @@ class TokenServices:
         return refresh_token
 
     def create_access_token(
-        self, refresh_token: RefreshToken, valid_from: datetime
+        self, user: User, refresh_token: RefreshToken, valid_from: datetime
     ) -> AccessToken:
         # Extract user information from refresh token
         refresh_token_id = refresh_token.id
@@ -55,6 +55,13 @@ class TokenServices:
         to_encode: dict[str, Any] = {
             "sub": refresh_token_id.value,  # Subject: refresh token ID
             "exp": expire,  # Expiration time
+            # get scopes from user roles & permissions
+            "scopes": [
+                p.scope_name
+                for role in user.roles
+                for p in role.permissions
+                if p and p.scope_name not in user.prohibited_permissions
+            ],
         }
 
         # Encode the access token (sign with secret key)
@@ -111,6 +118,7 @@ class TokenServices:
         self, token_pair_input: TokenPairInput, valid_from: datetime = datetime.now(UTC)
     ) -> tuple[RefreshToken, AccessToken]:
         user = await self.user_repository.find_by_email(email=token_pair_input.email)
+        print(user)
         if not user or not check_password(
             raw_password=token_pair_input.password, hashed_password=user.password
         ):
@@ -119,7 +127,7 @@ class TokenServices:
             user=user, valid_from=valid_from
         )
         access_token = self.create_access_token(
-            refresh_token=refresh_token, valid_from=valid_from
+            user=user, refresh_token=refresh_token, valid_from=valid_from
         )
         return (refresh_token, access_token)
 
