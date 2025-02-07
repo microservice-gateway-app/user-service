@@ -18,7 +18,7 @@ class UserServiceConfigurations(BaseSettings):
     PORT: int = 8001
 
     ADMIN_EMAIL: str = "admin@app.com"
-    ADMIN_PASSWORD: str = "admin@123"
+    ADMIN_PASSWORD: str = "Admin@123"
     ADMIN_FIRST_NAME: str = "App"
     ADMIN_MIDDLE_NAME: str = "dot"
     ADMIN_LAST_NAME: str = "Admin"

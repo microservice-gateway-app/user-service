@@ -10,7 +10,7 @@ from alembic import context
 from injector import Injector
 
 from users.config import UserServiceConfigurations, provide_config
-from users.db import base
+from users.infrastructure.db import base
 
 injector = Injector(modules=[provide_config])
 app_config = injector.get(UserServiceConfigurations)

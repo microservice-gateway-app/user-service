@@ -5,9 +5,9 @@ from fastapi import FastAPI
 from injector import Injector, Module, provider, singleton
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .api.controllers import ControllerModule, register_controllers_to_app
 from .config import provide_config
-from .controllers import ControllerModule, register_controllers_to_app
-from .db import DatabaseModule
+from .infrastructure.db import DatabaseModule
 
 
 class ProductionModule(Module):
