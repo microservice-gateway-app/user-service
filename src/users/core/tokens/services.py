@@ -4,19 +4,17 @@ from typing import Any
 
 from jose import JWTError, jwt
 
-from users.config import UserServiceConfigurations
-
 from .domain.token import AccessToken, RefreshToken, RefreshTokenId
 from .domain.token_user import TokenUser
 from .repository import TokenRepository
-from .schemas import TokenPairInput
+from .schemas import TokenConfigurations, TokenPairInput
 
 
 class TokenServices:
     def __init__(
         self,
         token_repository: TokenRepository,
-        config: UserServiceConfigurations,
+        config: TokenConfigurations,
     ):
         self.token_repository = token_repository
         self.config = config

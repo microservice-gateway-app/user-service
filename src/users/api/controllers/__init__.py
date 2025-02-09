@@ -3,6 +3,7 @@ from injector import Binder, Injector, Module, provider
 
 from users.config import UserServiceConfigurations
 from users.core.tokens import TokenRepository, TokenServices
+from users.core.tokens.schemas import TokenConfigurations
 from users.core.users import UserRepository, UserServices
 
 from .base import Controllers
@@ -38,7 +39,10 @@ class ControllerModule(Module):
         config: UserServiceConfigurations,
     ) -> TokenController:
         return TokenController(
-            service=TokenServices(token_repository=token_repository, config=config)
+            service=TokenServices(
+                token_repository=token_repository,
+                config=TokenConfigurations.model_validate(config),
+            )
         )
 
 

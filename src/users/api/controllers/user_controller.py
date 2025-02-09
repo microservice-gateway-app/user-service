@@ -23,7 +23,7 @@ class AdminUserController(BaseController):
     """Operations for admin that require user scopes."""
 
     def __init__(self, user_services: UserServices) -> None:
-        super().__init__(prefix="/admin/users")
+        super().__init__(prefix="/users/admin")
         self.user_services = user_services
 
     def init_routes(self) -> None:

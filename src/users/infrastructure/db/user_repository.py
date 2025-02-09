@@ -31,11 +31,13 @@ class UserRepositoryOnSQLA(UserRepository, BaseRepository):
 
     async def find_user_by_id(self, user_id: UserId) -> Optional[User]:
         result = await self.session.get(UserORM, user_id.value)
-        return User.model_validate(result) if result else None
+        return User.model_validate(result) if result and not result.deleted_at else None
 
     async def find_profile_by_id(self, user_id: UserId) -> Optional[Profile]:
         result = await self.session.get(ProfileORM, user_id.value)
-        return Profile.model_validate(result) if result else None
+        return (
+            Profile.model_validate(result) if result and not result.deleted_at else None
+        )
 
     async def query_users(self, query: UserQuery) -> tuple[list[Profile], int]:
         stmt = select(ProfileORM)
@@ -54,6 +56,8 @@ class UserRepositoryOnSQLA(UserRepository, BaseRepository):
                 .join(UserRoleORM, ProfileORM.user_id == UserRoleORM.user_id)
                 .where(UserRoleORM.role_id.in_(query.role_ids))
             )
+
+        stmt = stmt.where(ProfileORM.deleted_at.is_not(None))
 
         total_count = await self.session.execute(
             select(func.count()).select_from(stmt.subquery())
@@ -79,11 +83,11 @@ class UserRepositoryOnSQLA(UserRepository, BaseRepository):
     async def delete_user(self, user_id: UserId) -> None:
         result = await self.session.get(UserORM, user_id)
         if result:
-            await self.session.delete(result)
+            result.soft_delete()
             await self.session.commit()
 
     async def delete_profile(self, user_id: UserId) -> None:
         result = await self.session.get(ProfileORM, user_id)
         if result:
-            await self.session.delete(result)
+            result.soft_delete()
             await self.session.commit()

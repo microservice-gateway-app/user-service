@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 from sqlalchemy import DateTime, ForeignKey, String
@@ -12,7 +12,16 @@ from sqlalchemy.sql import case
 from .base import Base
 
 
-class UserORM(Base):
+class SoftDeleteMixin:
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, default=None
+    )
+
+    def soft_delete(self):
+        self.deleted_at = datetime.now(UTC)
+
+
+class UserORM(Base, SoftDeleteMixin):
     __tablename__ = "users"
 
     id: Mapped[str] = mapped_column(
@@ -27,7 +36,7 @@ class UserORM(Base):
     )
 
 
-class ProfileORM(Base):
+class ProfileORM(Base, SoftDeleteMixin):
     __tablename__ = "profiles"
 
     user_id: Mapped[str] = mapped_column(
@@ -50,7 +59,7 @@ class ProfileORM(Base):
     user: Mapped[UserORM] = relationship("UserORM", back_populates="profile")
 
 
-class RoleORM(Base):
+class RoleORM(Base, SoftDeleteMixin):
     __tablename__ = "roles"
 
     id: Mapped[str] = mapped_column(
@@ -74,7 +83,7 @@ class UserRoleORM(Base):
     role_id: Mapped[str] = mapped_column(ForeignKey("roles.id"), primary_key=True)
 
 
-class PermissionORM(Base):
+class PermissionORM(Base, SoftDeleteMixin):
     __tablename__ = "permissions"
 
     id: Mapped[str] = mapped_column(
@@ -102,7 +111,7 @@ class PermissionORM(Base):
         )
 
 
-class RefreshTokenRecord(Base):
+class RefreshTokenRecord(Base, SoftDeleteMixin):
     __tablename__ = "refresh_tokens"
     id: Mapped[str] = mapped_column(primary_key=True)
     token: Mapped[str] = mapped_column(unique=True)
