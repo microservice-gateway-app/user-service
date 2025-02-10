@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import HTTPException, Security
 from pydantic import BaseModel
@@ -25,7 +25,7 @@ class AccessTokenResponse(BaseModel):
 @controller
 class TokenController(BaseController):
     def __init__(self, service: TokenServices) -> None:
-        super().__init__(prefix="/tokens")
+        super().__init__(prefix="/users/tokens")
         self.service = service
 
     def init_routes(self) -> None:
@@ -42,7 +42,7 @@ class TokenController(BaseController):
         """Create and return a pair of access and refresh tokens."""
         try:
             refresh_token, access_token = await self.service.create_token_pair(
-                token_pair_input=token_pair_input
+                token_pair_input=token_pair_input, valid_from=datetime.now(UTC)
             )
             return TokenPairResponse(
                 refresh_token=refresh_token.token, access_token=access_token.token

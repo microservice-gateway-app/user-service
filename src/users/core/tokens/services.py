@@ -100,7 +100,7 @@ class TokenServices:
         return token
 
     async def create_token_pair(
-        self, token_pair_input: TokenPairInput, valid_from: datetime = datetime.now(UTC)
+        self, token_pair_input: TokenPairInput, valid_from: datetime
     ) -> tuple[RefreshToken, AccessToken]:
         user = await self.token_repository.find_user_by_email(
             email=token_pair_input.email

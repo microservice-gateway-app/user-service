@@ -19,6 +19,7 @@ class BaseController(abc.ABC):
         self.router = APIRouter(
             prefix=prefix or "",
             tags=[controller_name],
+            redirect_slashes=True,
         )
         self.init_routes()
 
