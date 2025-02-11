@@ -149,6 +149,32 @@ class UserDetailedProfileView(UserProfileView):
     roles: list[str] = []
     permissions: set[str] = set()
 
+    @staticmethod
+    def from_user_and_profile(user: User, profile: Profile) -> UserDetailedProfileView:
+        return UserDetailedProfileView(
+            user_id=profile.user_id,
+            first_name=profile.first_name,
+            last_name=profile.last_name,
+            phone_number=profile.phone_number,
+            address=profile.address,
+            city=profile.city,
+            state=profile.state,
+            zip_code=profile.zip_code,
+            country=profile.country,
+            avatar=profile.avatar,
+            bio=profile.bio,
+            website=profile.website,
+            birth_date=profile.birth_date,
+            roles=[role.role.name for role in user.roles],
+            permissions={
+                f"{permission.namespace}.{permission.name}"
+                if permission.name
+                else permission.namespace
+                for role in user.roles
+                for permission in role.role.permissions
+            },
+        )
+
 
 class UserList(BaseModel):
     """List of users."""

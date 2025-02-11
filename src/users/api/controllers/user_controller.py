@@ -12,6 +12,7 @@ from users.core.users import (
     UserRegister,
     UserServices,
 )
+from users.core.users.schemas import UserDetailedProfileView
 
 from ..middlewares.access_scopes import has_any_scope
 from .base import BaseController, controller
@@ -151,9 +152,9 @@ class UserController(BaseController):
     async def get_my_profile(
         self,
         actor: Actor = Security(has_any_scope, scopes=[UserScope.USER_READ_SELF.value]),
-    ) -> UserProfileView:
+    ) -> UserProfileView | UserDetailedProfileView:
         """Get my profile. Required scopes: users:self"""
-        return await self.user_services.get_user_profile(actor.user_id)
+        return await self.user_services.get_user_profile(actor.user_id, detailed=True)
 
     async def update_my_profile(
         self,

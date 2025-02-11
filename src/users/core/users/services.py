@@ -4,6 +4,7 @@ from ..shared import RoleId, UserId
 from .repository import UserRepository
 from .schemas import (
     UserAdminCreate,
+    UserDetailedProfileView,
     UserList,
     UserPasswordChange,
     UserProfileUpdate,
@@ -49,11 +50,20 @@ class UserServices:
         await self.user_repository.save_user(user)
         await self.user_repository.save_profile(profile)
 
-    async def get_user_profile(self, user_id: UserId) -> UserProfileView:
+    async def get_user_profile(
+        self, user_id: UserId, detailed: bool = False
+    ) -> UserProfileView | UserDetailedProfileView:
         """Get a user's profile."""
         profile = await self.user_repository.find_profile_by_id(user_id)
         if not profile:
             raise ValueError(f"NOT FOUND: Profile for user {user_id} not found.")
+        if detailed:
+            user = await self.user_repository.find_user_by_id(user_id)
+            if not user:
+                raise ValueError(f"NOT FOUND: User {user_id} not found.")
+            return UserDetailedProfileView.from_user_and_profile(
+                user=user, profile=profile
+            )
         return UserProfileView.from_profile(profile)
 
     async def query_users_for_admin(self, query: UserQuery) -> UserList:

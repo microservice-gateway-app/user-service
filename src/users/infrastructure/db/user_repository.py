@@ -1,17 +1,41 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 
 from users.core.shared import RoleId, UserId
 from users.core.users import UserQuery, UserRepository
 from users.core.users.domain import Profile, Role, User
+from users.core.users.domain.permission import Permission
+from users.core.users.domain.user import UserRole
 
 from .base import BaseRepository
 from .orm import ProfileORM, RoleORM, UserORM, UserRoleORM
+
+
+def map_user_orm_to_user(user_orm: UserORM) -> User:
+    roles = [
+        UserRole(
+            user_id=UserId(value=user_orm.id),
+            role=Role(
+                id=RoleId(value=role.id),
+                name=role.name,
+                permissions=[
+                    Permission(name=permission.name, namespace=permission.namespace)
+                    for permission in role.permissions
+                ],
+            ),
+        )
+        for role in user_orm.roles
+    ]
+    return User(
+        id=UserId(value=user_orm.id),
+        email=user_orm.email,
+        password_hash=user_orm.password_hash,
+        roles=roles,
+    )
 
 
 # Repository Implementation
@@ -29,11 +53,19 @@ class UserRepositoryOnSQLA(UserRepository, BaseRepository):
         self.session.add(profile_orm)
         await self.session.commit()
 
-    async def find_user_by_id(self, user_id: UserId) -> Optional[User]:
-        result = await self.session.get(UserORM, user_id.value)
-        return User.model_validate(result) if result and not result.deleted_at else None
+    async def find_user_by_id(self, user_id: UserId) -> User | None:
+        stmt = (
+            select(UserORM)
+            .options(selectinload(UserORM.roles).selectinload(RoleORM.permissions))
+            .where(UserORM.id == user_id.value)
+        )
+        result = await self.session.execute(stmt)
+        user_orm = result.scalar_one_or_none()
+        if not user_orm:
+            return None
+        return map_user_orm_to_user(user_orm)
 
-    async def find_profile_by_id(self, user_id: UserId) -> Optional[Profile]:
+    async def find_profile_by_id(self, user_id: UserId) -> Profile | None:
         result = await self.session.get(ProfileORM, user_id.value)
         return (
             Profile.model_validate(result) if result and not result.deleted_at else None
@@ -76,7 +108,7 @@ class UserRepositoryOnSQLA(UserRepository, BaseRepository):
         )
         return Role.model_validate(result.scalar_one())
 
-    async def find_role_by_id(self, role_id: RoleId) -> Optional[Role]:
+    async def find_role_by_id(self, role_id: RoleId) -> Role | None:
         result = await self.session.get(RoleORM, role_id)
         return Role.model_validate(result) if result else None
 
