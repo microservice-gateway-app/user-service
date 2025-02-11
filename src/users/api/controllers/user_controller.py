@@ -4,6 +4,7 @@ from users.core.access import Actor, UserScope
 from users.core.shared import RoleId, UserId
 from users.core.users import (
     UserAdminCreate,
+    UserDetailedProfileView,
     UserList,
     UserPasswordChange,
     UserProfileUpdate,
@@ -12,7 +13,6 @@ from users.core.users import (
     UserRegister,
     UserServices,
 )
-from users.core.users.schemas import UserDetailedProfileView
 
 from ..middlewares.access_scopes import has_any_scope
 from .base import BaseController, controller

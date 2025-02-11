@@ -215,3 +215,4 @@ async def test_delete_user(
     await user_services.delete_user(user_id)
     user_repository.delete_user.assert_called_once_with(user.id)
     user_repository.delete_profile.assert_called_once_with(user.id)
+

@@ -5,6 +5,7 @@ from .schemas import (
     UserPasswordChange,
     UserProfileUpdate,
     UserProfileView,
+    UserDetailedProfileView,
     UserQuery,
     UserRegister,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "UserPasswordChange",
     "UserProfileUpdate",
     "UserProfileView",
+    "UserDetailedProfileView",
     "UserQuery",
     "UserRegister",
     "UserServices",

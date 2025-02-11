@@ -2,12 +2,14 @@ from fastapi import FastAPI
 from injector import Binder, Injector, Module, provider
 
 from users.config import UserServiceConfigurations
+from users.core.roles.services import RoleRepository, RoleServices
 from users.core.tokens import TokenRepository, TokenServices
 from users.core.tokens.schemas import TokenConfigurations
 from users.core.users import UserRepository, UserServices
 
 from .base import Controllers
 from .health_controller import HealthCheckController
+from .role_controller import RoleController
 from .token_controller import TokenController
 from .user_controller import AdminUserController, UserController
 
@@ -44,6 +46,12 @@ class ControllerModule(Module):
                 config=TokenConfigurations.model_validate(config),
             )
         )
+
+    @provider
+    def provide_role_controller(
+        self, role_repository: RoleRepository
+    ) -> RoleController:
+        return RoleController(service=RoleServices(role_repository=role_repository))
 
 
 def register_controllers_to_app(app: FastAPI, injector: Injector) -> FastAPI:
