@@ -21,17 +21,23 @@ class RoleRepositoryOnSQLA(RoleRepository, BaseRepository):
         record = result.scalars().first()
         return self._map_to_domain(record) if record else None
 
+    async def find_all(self) -> list[Role]:
+        stmt = select(RoleORM).options(selectinload(RoleORM.permissions))
+        result = await self.session.execute(stmt)
+        records = result.scalars().all()
+        return [self._map_to_domain(record) for record in records]
+
     async def save(self, role: Role) -> None:
         try:
             role_model = RoleORM(
                 id=role.id.value,
                 name=role.name,
                 permissions=[
-                    await self.ensure_permission_exists(perm)
+                    PermissionORM(namespace=perm.namespace, name=perm.name)
                     for perm in role.permissions
                 ],
             )
-            self.session.add(role_model)
+            await self.session.merge(role_model)
             await self.session.commit()
         except SQLAlchemyError as e:
             await self.session.rollback()

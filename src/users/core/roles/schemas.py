@@ -22,3 +22,13 @@ class RoleView(Role):
     @classmethod
     def from_role(cls, role: Role) -> RoleView:
         return cls(id=role.id, name=role.name, permissions=role.permissions)
+
+
+class RoleList(BaseModel):
+    total: int
+    roles: list[RoleView]
+
+    @staticmethod
+    def from_roles(roles: list[Role]) -> RoleList:
+        role_views = [RoleView.from_role(role) for role in roles]
+        return RoleList(total=len(role_views), roles=role_views)

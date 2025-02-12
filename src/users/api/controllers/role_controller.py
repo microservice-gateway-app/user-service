@@ -4,9 +4,10 @@ from users.core.access import Actor, UserScope
 from users.core.roles import (
     RoleInput,
     RolePermissionAssignmentInput,
-    RoleView,
     RoleServices,
+    RoleView,
 )
+from users.core.roles.schemas import RoleList
 from users.core.shared import RoleId
 
 from ..middlewares.access_scopes import has_any_scope
@@ -22,6 +23,7 @@ class RoleController(BaseController):
 
     def init_routes(self) -> None:
         self.router.post("")(self.create_role)
+        self.router.get("")(self.list_roles)
         self.router.get("/{role_id}")(self.get_role)
         self.router.delete("/{role_id}")(self.delete_role)
         self.router.post("/{role_id}/permissions")(self.assign_permission_to_role)
@@ -47,6 +49,11 @@ class RoleController(BaseController):
     ) -> RoleView | None:
         """Retrieve a role by ID."""
         return await self.service.get_role(RoleId(value=role_id))
+
+    async def list_roles(
+        self, _: Actor = Security(has_any_scope, scopes=[UserScope.USER_WRITE.value])
+    ) -> RoleList:
+        return await self.service.list_roles()
 
     async def delete_role(
         self,

@@ -25,7 +25,7 @@ class AccessTokenResponse(BaseModel):
 @controller
 class TokenController(BaseController):
     def __init__(self, service: TokenServices) -> None:
-        super().__init__(prefix="/users/tokens")
+        super().__init__(prefix="/tokens")
         self.service = service
 
     def init_routes(self) -> None:

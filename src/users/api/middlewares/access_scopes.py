@@ -40,7 +40,11 @@ async def has_any_scope(
     # Extract actor and scopes from the token
     actor = Actor(
         user_id=UserId(value=payload.get("sub", "")),
-        scopes=[UserScope(s) for s in payload.get("scopes", ())],
+        scopes=[
+            UserScope(s)
+            for s in payload.get("scopes", ())
+            if s in UserScope._value2member_map_
+        ],
     )
     if not actor:
         raise HTTPException(status_code=403, detail="No actor information found")

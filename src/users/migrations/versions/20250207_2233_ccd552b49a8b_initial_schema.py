@@ -7,13 +7,10 @@ Create Date: 2025-02-07 22:33:07.323376
 """
 
 from typing import Sequence
-from uuid import uuid4
 
 import sqlalchemy as sa
 from alembic import op
 
-from users.config import UserServiceConfigurations
-from users.core.users.domain.user import User
 
 # revision identifiers, used by Alembic.
 revision: str = "ccd552b49a8b"
@@ -102,88 +99,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("user_id", "role_id"),
     )
 
-    # Insert default roles
-    admin_role_id = str(uuid4())
-    user_role_id = str(uuid4())
-    op.execute(
-        f"""
-        INSERT INTO roles (id, name) VALUES
-        ('{admin_role_id}', 'admin'),
-        ('{user_role_id}', 'user')
-        """
-    )
-
-    # Insert default permissions
-    op.execute(
-        f"""
-        INSERT INTO permissions (id, name, namespace, role_id) VALUES
-        ('{uuid4()}', '', 'users', '{admin_role_id}'),
-        ('{uuid4()}', 'write', 'users', '{admin_role_id}'),
-        ('{uuid4()}', '', 'users:self', '{admin_role_id}'),
-        ('{uuid4()}', 'write', 'users:self', '{admin_role_id}'),
-        ('{uuid4()}', '', 'users:self', '{user_role_id}'),
-        ('{uuid4()}', 'write', 'users:self', '{user_role_id}')
-        """
-    )
-
-    # Insert admin user
-    config = UserServiceConfigurations()
-    user = User(email=config.ADMIN_EMAIL, password_hash="")
-    user.set_password(config.ADMIN_PASSWORD)
-    admin_user_id = str(uuid4())
-    admin_email = user.email
-    admin_password_hash = user.password_hash
-    op.execute(
-        f"""
-        INSERT INTO users (id, email, password_hash) VALUES
-        ('{admin_user_id}', '{admin_email}', '{admin_password_hash}')
-        """
-    )
-
-    # Insert admin profile
-    op.execute(
-        f"""
-        INSERT INTO profiles (
-            user_id,
-            email,
-            first_name,
-            last_name,
-            phone_number,
-            address,
-            city,
-            state,
-            zip_code,
-            country,
-            avatar,
-            bio,
-            website,
-            birth_date
-        ) VALUES (
-            '{admin_user_id}',
-            '{admin_email}',
-            'Admin',
-            'User',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            NULL,
-            NULL,
-            NULL
-        )
-        """
-    )
-
-    # Assign admin role to admin user
-    op.execute(
-        f"""
-        INSERT INTO user_roles (user_id, role_id) VALUES
-        ('{admin_user_id}', '{admin_role_id}')
-        """
-    )
     # ### end Alembic commands ###
 
 

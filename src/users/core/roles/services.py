@@ -3,7 +3,7 @@ from __future__ import annotations
 from ..shared.id import RoleId
 from .domain import Permission, Role
 from .repository import RoleRepository
-from .schemas import RoleInput, RolePermissionAssignmentInput, RoleView
+from .schemas import RoleInput, RoleList, RolePermissionAssignmentInput, RoleView
 
 
 class RoleServices:
@@ -33,6 +33,11 @@ class RoleServices:
         """Retrieve a role by its ID."""
         role = await self.role_repository.find_by_id(role_id)
         return RoleView.from_role(role) if role else None
+
+    async def list_roles(self) -> RoleList:
+        """Lists all roles."""
+        roles = await self.role_repository.find_all()
+        return RoleList.from_roles(roles)
 
     async def delete_role(self, role_id: RoleId) -> bool:
         """Deletes a role if it exists, without affecting shared permissions."""

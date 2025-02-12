@@ -72,7 +72,7 @@ class RoleORM(Base, SoftDeleteMixin):
     )
 
     permissions: Mapped[list[PermissionORM]] = relationship(
-        back_populates="role", lazy="selectin"
+        secondary="role_permissions", back_populates="roles", lazy="selectin"
     )
 
 
@@ -91,9 +91,10 @@ class PermissionORM(Base, SoftDeleteMixin):
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
     namespace: Mapped[str] = mapped_column(String, nullable=False)
-    role_id: Mapped[str] = mapped_column(ForeignKey("roles.id"), nullable=False)
 
-    role: Mapped[RoleORM] = relationship(back_populates="permissions")
+    roles: Mapped[list[RoleORM]] = relationship(
+        secondary="role_permissions", back_populates="permissions", lazy="selectin"
+    )
 
     @hybrid_property
     def full_name(self) -> str:
@@ -109,6 +110,13 @@ class PermissionORM(Base, SoftDeleteMixin):
             (cls.name.is_(None), cls.namespace),  # If name is NULL
             else_=cls.namespace + "." + cls.name,  # Default case
         )
+
+
+class RolePermissionORM(Base):
+    __tablename__ = "role_permissions"
+
+    role_id: Mapped[str] = mapped_column(ForeignKey("roles.id"), primary_key=True)
+    permission_id: Mapped[str] = mapped_column(ForeignKey("permissions.id"), primary_key=True)
 
 
 class RefreshTokenRecord(Base, SoftDeleteMixin):
